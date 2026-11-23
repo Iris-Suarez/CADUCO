@@ -1,0 +1,761 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CADUCO - TDM 2 TIF 2026 </title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: "Courier New", monospace; background: #000; }
+        canvas.a-canvas { touch-action: none; }
+        #visor-foto-overlay {
+            position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+            background: rgba(6, 7, 10, 0.90); z-index: 30;
+        }
+        #visor-foto-overlay.activo { display: flex; }
+        #visor-foto-panel {
+            width: min(82vw, 760px); background: #0d1016; color: #d8dbe2; border: 3px solid #8e95a3;
+            box-shadow: 0 0 0 2px #2c3441 inset, 0 12px 32px rgba(0,0,0,0.7); padding: 16px 16px 12px;
+        }
+        #visor-foto-cabecera {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+            font-size: 14px; letter-spacing: 1px; text-transform: uppercase;
+        }
+        #visor-foto-titulo { color: #f3f4f7; }
+        #visor-foto-cerrar {
+            background: #1d2530; color: #f3f4f7; border: 1px solid #7f8795; padding: 5px 10px; cursor: pointer;
+            font-family: inherit; text-transform: uppercase;
+        }
+        #visor-foto-marco {
+            border: 2px solid #c6cad3; background: #11151d; padding: 10px; display: flex; justify-content: center;
+        }
+        #visor-foto-imagen { max-width: 100%; max-height: 72vh; object-fit: contain; display: block; }
+        #visor-foto-pie { margin-top: 10px; font-size: 13px; color: #b8becc; }
+        #visor-foto-documento { display:none; color:#e0dacc; background:#262824; font-size:clamp(15px,2vw,21px); line-height:1.7; padding:22px; margin: 0; min-height:160px; white-space:pre-line; }
+        #visor-foto-panel { max-height:90vh; overflow-y:auto; }
+        #mensaje-caduco {position:fixed;left:50%;bottom:7%;transform:translateX(-50%); max-width:min(620px,84vw);display:none;padding:13px 22px;background:rgba(12,16,23,.92);border:1px solid #9ea4af;color:#e8ebf1;font:16px 'Courier New',monospace;text-align:center;letter-spacing:.4px;pointer-events:none;z-index:40;}
+        #mensaje-caduco.activo{display:block;}
+
+        #pov-entrar, #pov-salir { display: none !important; }
+        #pov-hud { display: none; position: fixed; inset: 0; z-index: 12; pointer-events: none; }
+        body.modo-pov #pov-hud { display: block; }
+        #pov-ayuda {
+            position: absolute;
+            top: max(16px, env(safe-area-inset-top));
+            right: 16px;
+            max-width: min(52vw, 390px);
+            padding: 8px 12px;
+            border: 1px solid rgba(174, 185, 196, .65);
+            background: rgba(11, 17, 25, .77);
+            color: #D5DFE9;
+            font: 12px/1.5 "Courier New", monospace;
+            text-align: right;
+            pointer-events: none;
+        }
+        #pov-movil { display: none; }
+        @media (hover: none), (pointer: coarse) {
+            #pov-ayuda {
+                top: max(14px, env(safe-area-inset-top));
+                right: 10px;
+                max-width: 210px;
+                font-size: 11px;
+            }
+            body.modo-pov #pov-movil {
+                display: grid;
+                grid-template-columns: 49px 49px 49px;
+                grid-template-rows: 49px 49px;
+                gap: 5px;
+                position: absolute;
+                left: max(16px, env(safe-area-inset-left));
+                bottom: max(18px, env(safe-area-inset-bottom));
+                pointer-events: auto;
+                touch-action: none;
+            }
+            .pov-flecha {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 49px;
+                height: 49px;
+                padding: 0;
+                border: 1px solid rgba(229, 232, 238, .68);
+                border-radius: 9px;
+                font: bold 22px/1 "Courier New", monospace;
+                color: #E4E7ED;
+                background: rgba(15, 20, 30, .67);
+                touch-action: none;
+                user-select: none;
+                -webkit-user-select: none;
+            }
+            .pov-flecha:active { background: rgba(89, 107, 131, .86); }
+            #pov-movil button[data-pov-direccion="adelante"] { grid-column: 2; grid-row: 1; }
+            #pov-movil button[data-pov-direccion="izquierda"] { grid-column: 1; grid-row: 2; }
+            #pov-movil button[data-pov-direccion="atras"] { grid-column: 2; grid-row: 2; }
+            #pov-movil button[data-pov-direccion="derecha"] { grid-column: 3; grid-row: 2; }
+            body.modo-pov #mensaje-caduco { bottom: 30%; max-width: 78vw; font-size: 13px; }
+        }
+        @media (max-width: 370px) {
+            #pov-ayuda { max-width: 180px; }
+        }
+    </style>
+    <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
+<script src="sonidos.js"></script>
+<script src="camara.js"></script>
+<script src="computadora.js"></script>
+<script src="puerta.js"></script>
+<script src="luces.js"></script>
+<script src="interacciones.js"></script>
+<script src="cama.js"></script>
+<script src="objetos.js"></script>
+<script src="pov.js"></script>
+<script src="camara-seguidora.js"></script>
+</head>
+<body class="solo-pov">
+    <div id="pov-hud" aria-label="Controles de primera persona">
+        <div id="pov-ayuda">Arrastrá para mirar. Tocá los objetos para explorar. En PC, movete con WASD o flechas. En celular, usá las flechas de la esquina.</div>
+        <div id="pov-movil" aria-label="Desplazamiento en la habitación">
+            <button class="pov-flecha" type="button" data-pov-direccion="adelante" aria-label="Avanzar">↑</button>
+            <button class="pov-flecha" type="button" data-pov-direccion="izquierda" aria-label="Ir a la izquierda">←</button>
+            <button class="pov-flecha" type="button" data-pov-direccion="atras" aria-label="Retroceder">↓</button>
+            <button class="pov-flecha" type="button" data-pov-direccion="derecha" aria-label="Ir a la derecha">→</button>
+        </div>
+    </div>
+    <a-scene pov-caduco cursor="rayOrigin: mouse; fuse: false" raycaster="objects: .interactivo" renderer="antialias: true; colorManagement: true" background="color: #C3C8D1">
+
+<a-assets>
+<!-- modelos -->
+<a-asset-item
+        id="modelo-lampara"
+        src="assets/modelos/lampara.glb">
+</a-asset-item>
+
+<a-asset-item
+        id="modelo-cortina"
+        src="assets/modelos/cortina-sin.glb">
+</a-asset-item>
+<a-asset-item
+        id="modelo-silla-de-escritorio"
+        src="assets/modelos/silla-escritorio.glb">
+</a-asset-item>
+
+
+<img id="paisaje-original-caduco" src="assets/imagenes/ventana/paisaje.png">
+<a-asset-item id="modelo-planta" src="assets/modelos/plant_interior_decoration.glb"></a-asset-item>
+<a-asset-item id="modelo-camara-seguridad" src="assets/modelos/camara_seguridad_normalizada.glb"></a-asset-item>
+<a-asset-item id="modelo-pc-retro" src="assets/modelos/retro_crt_computer_1990s_desktop_pc.glb"></a-asset-item>
+<img id="hermana-hamaca-textura" src="assets/imagenes/ventana/hermana_hamaca.png">
+<img id="textura-pierna_izquierda" src="assets/imagenes/ventana/pierna_izquierda.png">
+<img id="textura-pierna_derecha" src="assets/imagenes/ventana/pierna_derecha.png">
+<img id="foto-portarretrato" src="assets/imagenes/foto_portarretrato.png">
+<img id="textura-pared" src="assets/imagenes/texturas/pared_tapiz.png">
+<img id="textura-alfombra" src="assets/imagenes/texturas/alfombra_felpuda.png">
+<img id="textura-manta" src="assets/imagenes/texturas/manta_tela.png">
+<img id="poster-jurassic-texturizado" src="assets/imagenes/posters/jurassic_park_texturizado.png">
+<img id="poster-leon-texturizado" src="assets/imagenes/posters/leon_texturizado.png">
+<img id="pantalla-pc-0" src="assets/imagenes/computadora/pantalla_0.png">
+<img id="pantalla-pc-1" src="assets/imagenes/computadora/pantalla_1.png">
+<img id="pantalla-pc-2" src="assets/imagenes/computadora/pantalla_2.png">
+<img id="pantalla-pc-3" src="assets/imagenes/computadora/pantalla_3.png">
+<img id="pantalla-pc-4" src="assets/imagenes/computadora/pantalla_4.png">
+<img id="pantalla-pc-5" src="assets/imagenes/computadora/pantalla_5.png">
+<img id="pantalla-pc-6" src="assets/imagenes/computadora/pantalla_6.png">
+<img id="pantalla-pc-7" src="assets/imagenes/computadora/pantalla_7.png">
+<img id="pantalla-pc-8" src="assets/imagenes/computadora/pantalla_8.png">
+
+</a-assets>
+
+<!-- Paredes -->
+ <!-- piso --> 
+<a-box
+    position="0 -0.1 -3.45"
+    width="4"
+    height="0.2"
+    depth="4.60"
+    color="#777B83">
+</a-box>
+<a-box id="piso-anexo-derecha"
+    position="2.55 -0.1 -3.45"
+    width="1.20"
+    height="0.2"
+    depth="4.60"
+    color="#777B83">
+</a-box>
+<!-- pared atras -->
+<a-box
+    position="0 1.35 -5.7"
+    width="4"
+    height="2.7"
+    depth="0.1"
+    color="#9498A3"
+    material="src: #textura-pared; repeat: 3 2; roughness: 1; metalness: 0">
+</a-box>
+<!-- pared izquierda -->
+ <a-box
+    position="-1.95 1.35 -3.45"
+    width="0.1"
+    height="2.7"
+    depth="4.60"
+    color="#858A96"
+    material="src: #textura-pared; repeat: 3 2; roughness: 1; metalness: 0">
+</a-box>
+<a-box id="techo-pov" visible="true"
+       position="0 2.74 -3.45" width="4.00" height="0.08" depth="4.60"
+       color="#9CA1AC" material="src: #textura-pared; roughness: 1; metalness: 0">
+</a-box>
+<a-box id="techo-anexo-pov" visible="true"
+       position="2.55 2.74 -3.45" width="1.20" height="0.08" depth="4.60"
+       color="#9CA1AC" material="src: #textura-pared; roughness: 1; metalness: 0">
+</a-box>
+<a-box id="pared-frontal-pov" visible="true"
+       position="0 1.35 -1.20" width="4.00" height="2.70" depth="0.10"
+       color="#858A96" material="src: #textura-pared; roughness: 1; metalness: 0">
+</a-box>
+<a-box id="pared-frontal-anexo" visible="true"
+       position="2.55 1.35 -1.20" width="1.20" height="2.70" depth="0.10"
+       color="#858A96" material="src: #textura-pared; roughness: 1; metalness: 0">
+</a-box>
+<a-box id="pared-fondo-anexo"
+       position="2.55 1.35 -5.70" width="1.20" height="2.70" depth="0.10"
+       color="#9498A3" material="src: #textura-pared; repeat: 1 2; roughness: 1; metalness: 0">
+</a-box>
+<a-box id="pared-exterior-anexo"
+       position="3.10 1.35 -3.45" width="0.10" height="2.70" depth="4.60"
+       color="#858A96" material="src: #textura-pared; repeat: 2 2; roughness: 1; metalness: 0">
+</a-box>
+
+<a-entity
+    id="camara-seguridad"
+    position="0.72 2.48 -1.51"
+    rotation="0 -90 0">
+    <a-gltf-model
+        id="camara-seguridad-modelo"
+        src="#modelo-camara-seguridad"
+        scale="0.05 0.05 0.05"
+        camara-seguidora>
+    </a-gltf-model>
+    <a-box
+        id="tocar-camara-seguridad"
+        class="interactivo"
+        mensaje-camara-seguridad
+        position="0 -0.02 0.10"
+        width="0.16"
+        height="0.18"
+        depth="0.27"
+        material="transparent: true; opacity: 0; depthWrite: false; side: double">
+    </a-box>
+</a-entity>
+
+
+
+<!-- Camara-->
+<a-entity id="camara-principal"
+    position="-0.98 0.79 -4.24"
+    rotation="85 180 0"
+    camera="fov:74"
+    look-controls="enabled: false"
+    wasd-controls="enabled:false"
+    camara-orbital>
+</a-entity>
+
+<a-light id="luz-ambiente" type="ambient" color="#BBC4D2" intensity="0.42"></a-light>
+<a-light id="luz-direccional" type="directional" color="#D7DEEB" intensity="0.22" position="-1 3 -2"></a-light>
+<a-light id="luz-ventana" type="point" color="#AABDD1" intensity="0.22" distance="5.6" decay="1" position="-0.90 1.85 -5.35"></a-light>
+<a-light id="luz-computadora" type="point" color="#75CE89" intensity="0" distance="2.4" decay="1" position="1.25 1.15 -5.10"></a-light>
+
+<!--Cama entera-->
+<a-entity id="cama" position="-1.25 0 -4.5">
+<!--base-->
+<a-box
+        position="0 0.2 0"
+        width="1.4"
+        height="0.4"
+        depth="2"
+        color="#4D5360">
+</a-box>
+<!--colchon-->
+<!-- <a-box
+    position="0 0.48 0"
+    width="1.35"
+    height="0.16"
+    depth="1.95"
+    color="#78899A">
+</a-box> -->
+<!--cabecera-->
+<a-box
+    position="0 0.4 -1"
+    width="1.4"
+    height="0.9"
+    depth="0.1"
+    color="#4D5360">
+</a-box>
+<!-- Almohadas redondeadas y manta con pliegues, sin mover la cama. -->
+<a-entity id="textiles-cama" textiles-cama></a-entity>
+<!-- Área de contacto: cubre el colchón sin cambiar su apariencia. -->
+<a-box id="tocar-cama" class="interactivo" relato-cama
+       position="0 0.53 0" width="1.36" height="0.24" depth="1.92"
+       material="color: #FFFFFF; transparent: true; opacity: 0; depthWrite: false; side: double">
+</a-box>
+</a-entity>
+
+<!-- Escritorio -->
+ <a-entity id="escritorio" position="1.1 0 -5.3">
+<a-box
+    position="0 0.75 0"
+    width="1.4"
+    height="0.08"
+    depth="0.65"
+    color="#555E6C">
+</a-box>
+<!-- cajonera -->
+<a-box
+    position="-0.42 0.385 0"
+    width="0.42"
+    height="0.67"
+    depth="0.58"
+    color="#4E5C70">
+</a-box>
+<!-- base -->
+<a-box
+    position="-0.42 0.025 0"
+    width="0.36"
+    height="0.05"
+    depth="0.52"
+    color="#445061">
+</a-box>
+<!--pata der-->
+<a-box
+    position="0.62 0.355 0"
+    width="0.05"
+    height="0.71"
+    depth="0.6"
+    color="#454D59">
+</a-box>
+<!-- Cajones interactivos -->
+<a-entity id="cajon-superior" position="-0.42 0.61 0.305" cajon-caduco="documento: true">
+    <a-box id="cajon-superior-frente" class="interactivo" position="0 0 0"
+           width="0.38" height="0.13" depth="0.02" color="#39485D"></a-box>
+    <a-cylinder position="0 0 0.025" radius="0.008" height="0.14"
+                rotation="0 0 90" color="#A0A8B3"></a-cylinder>
+    <a-box position="0 -0.050 -0.135" width="0.34" height="0.012" depth="0.25" color="#304051"></a-box>
+    <a-box position="-0.17 -0.005 -0.135" width="0.013" height="0.08" depth="0.25" color="#3F5165"></a-box>
+    <a-box position="0.17 -0.005 -0.135" width="0.013" height="0.08" depth="0.25" color="#3F5165"></a-box>
+    <a-plane id="nota-cajon" class="interactivo" examinar-caduco="tipo: nota"
+             position="0 0.012 -0.06" rotation="-70 0 0" width="0.22" height="0.17"
+             visible="false" material="color: #E8E0C9; roughness: 1; side: double"></a-plane>
+</a-entity>
+<a-entity id="cajon-medio" position="-0.42 0.46 0.305" cajon-caduco="documento: false">
+    <a-box class="interactivo" position="0 0 0" width="0.38" height="0.13" depth="0.02" color="#39485D"></a-box>
+    <a-cylinder position="0 0 0.025" radius="0.008" height="0.14" rotation="0 0 90" color="#A0A8B3"></a-cylinder>
+    <a-box position="0 -0.050 -0.135" width="0.34" height="0.012" depth="0.25" color="#304051"></a-box>
+</a-entity>
+<a-entity id="cajon-inferior" position="-0.42 0.225 0.305" cajon-caduco="documento: false">
+    <a-box class="interactivo" position="0 0 0" width="0.38" height="0.31" depth="0.02" color="#39485D"></a-box>
+    <a-cylinder position="0 0.10 0.025" radius="0.008" height="0.14" rotation="0 0 90" color="#A0A8B3"></a-cylinder>
+    <a-box position="0 -0.130 -0.135" width="0.34" height="0.012" depth="0.25" color="#304051"></a-box>
+</a-entity>
+<a-gltf-model
+    id="lampara"
+    src="#modelo-lampara"
+    position="-0.40 0.79 0.1"
+    rotation="0 0 0"
+    scale="0.15 0.15 0.15">
+</a-gltf-model>
+<a-light id="luz-lampara-mesa" type="point" color="#FFE3AC" intensity="0"
+         distance="2.20" decay="2" position="-0.31 1.01 0.10">
+</a-light>
+<a-sphere id="resplandor-lampara-mesa" position="-0.32 1.04 0.10"
+          radius="0.020" material="color: #B8B1A0; roughness: 0.5; emissive: #000000; emissiveIntensity: 0">
+</a-sphere>
+<a-box id="tocar-lampara" class="interactivo" lampara-mesa-caduco
+       position="-0.40 0.98 0.1" width="0.36" height="0.42" depth="0.27"
+       material="color: #FFFFFF; transparent: true; opacity: 0; depthWrite: false; side: double">
+</a-box>
+
+<a-entity id="computadora-retro"
+          position="0.12 0.79 -0.02"
+          scale="0.80 0.80 0.80">
+    <a-gltf-model
+        id="modelo-computadora-retro"
+        src="#modelo-pc-retro"
+        position="-1.548 0.005 -1.752"
+        rotation="0 270 0">
+    </a-gltf-model>
+    <a-plane
+        id="pantalla-computadora"
+        class="interactivo"
+        pantalla-interactiva
+        position="-0.024 0.396 0.145"
+        width="0.294"
+        height="0.243"
+        material="shader: flat; transparent: true; opacity: 0; side: double; depthWrite: false">
+    </a-plane>
+</a-entity>
+</a-entity>
+
+<!-- ventana -->
+<a-entity id="ventana" position="-0.9 1.60 -5.58">
+<!-- vidrio -->
+    <a-plane
+        position="0 0 -0.01"
+        width="1.27"
+        height="0.87"
+        color="#A9B8CC">
+    </a-plane>
+<!-- Paisaje -->
+<a-image
+    id="paisaje-ventana"
+    src="#paisaje-original-caduco"
+    position="0 0 0.008"
+    width="1.16"
+    height="0.87"
+    material="shader: flat">
+</a-image>
+
+<a-entity id="hamaca-pivote" position="-0.029453 0.301328 0.025" hamaca-animada>
+        <!-- pierna izquierda -->
+        <a-entity id="pierna_izquierda-pivote" position="-0.041914 -0.505234 0.012">
+            <a-image id="pierna_izquierda" src="#textura-pierna_izquierda"
+                     position="0.029453 -0.063437 0"
+                     width="0.081562" height="0.142734"
+                     material="shader: flat; transparent: true; side: double; depthWrite: false">
+            </a-image>
+        </a-entity>
+        <!-- pierna derecha -->
+        <a-entity id="pierna_derecha-pivote" position="0.021523 -0.49957 0.012">
+            <a-image id="pierna_derecha" src="#textura-pierna_derecha"
+                     position="0.02209 -0.062305 0"
+                     width="0.071367" height="0.142734"
+                     material="shader: flat; transparent: true; side: double; depthWrite: false">
+            </a-image>
+        </a-entity>
+
+    <!-- Niña y asiento sobre las piernas -->
+    <a-image id="hermana-hamaca" class="interactivo"
+             src="#hermana-hamaca-textura"
+             position="0.029453 -0.301328 0.021"
+             width="1.16" height="0.87"
+             material="shader: flat; transparent: true; side: double; depthWrite: false">
+    </a-image>
+
+    <a-plane id="zona-toque-hamaca" class="interactivo"
+             position="0.02 -0.43 0.047" width="0.34" height="0.42"
+             material="shader: flat; color: #FFFFFF; transparent: true; opacity: 0; side: double; depthWrite: false">
+    </a-plane>
+
+    <a-sphere id="destello-hamaca" position="0.19 -0.41 0.049" radius="0.016"
+              material="shader: flat; color: #DAEAF2; transparent: true; opacity: 0.12; depthWrite: false"
+              animation__latido="property: material.opacity; from: 0.07; to: 0.38; dur: 1700; dir: alternate; loop: true; easing: easeInOutSine">
+    </a-sphere>
+</a-entity>
+
+<!-- marco sup-->
+    <a-box
+        position="0 0.49 0"
+        width="1.35"
+        height="0.08"
+        depth="0.04"
+        color="#D7DCE2">
+    </a-box>
+<!-- marco inf-->
+    <a-box
+        position="0 -0.49 0"
+        width="1.35"
+        height="0.08"
+        depth="0.04"
+        color="#D7DCE2">
+    </a-box>
+<!-- marco izq -->
+    <a-box
+        position="-0.635 0 0"
+        width="0.08"
+        height="0.90"
+        depth="0.04"
+        color="#D7DCE2">
+    </a-box>
+<!-- marco der -->
+    <a-box
+        position="0.635 0 0"
+        width="0.08"
+        height="0.90"
+        depth="0.04"
+        color="#D7DCE2">
+    </a-box>
+<!-- división
+    <a-box
+        position="0 0 0.025"
+        width="0.05"
+        height="0.90"
+        depth="0.03"
+        color="#D7DCE2">
+    </a-box>  -->
+
+<!-- alfeizar -->
+<a-box
+    position="0 -0.57 0.03"
+    width="1.35"
+    height="0.08"
+    depth="0.10"
+    color="#34485C">
+</a-box>
+
+<!-- barra de la cortina -->
+<a-cylinder
+    position="0 0.58 0.12"
+    radius="0.01"
+    height="1.55"
+    rotation="0 0 90"
+    color="#303B4A">
+</a-cylinder>
+
+<!-- soporte izq -->
+<a-box
+    position="-0.68 0.58 0.05"
+    width="0.04"
+    height="0.04"
+    depth="0.14"
+    color="#303B4A">
+</a-box>
+
+<!-- soporte der-->
+<a-box
+    position="0.68 0.58 0.05"
+    width="0.04"
+    height="0.04"
+    depth="0.14"
+    color="#303B4A">
+</a-box>
+  <a-gltf-model
+        src="#modelo-cortina"
+        position="0.02 -0.57 0.135"
+        rotation="0 0 0"
+        scale="0.6 0.5 0.5">
+    </a-gltf-model>
+</a-entity>
+<!-- Silla del escritorio -->
+<a-entity id="silla" position="1.1 0.5 -4.50">
+    <a-gltf-model
+        src="#modelo-silla-de-escritorio"
+        rotation="0 90 0"
+        scale="0.5 0.5 0.5">
+    </a-gltf-model>
+    <a-box id="tocar-silla" class="interactivo" mover-silla-caduco
+           position="0 0 0" width="0.60" height="0.90" depth="0.63"
+           material="color: #FFFFFF; transparent: true; opacity: 0; depthWrite: false; side: double">
+    </a-box>
+</a-entity>
+
+<!-- Alfombra -->
+<a-box position="0.60 0.012 -3.30" width="2.04" height="0.024" depth="1.69" color="#61634E" material="roughness: 1"></a-box>
+<a-plane
+    id="alfombra"
+    position="0.60 0.026 -3.30"
+    rotation="-90 0 0"
+    width="2.00"
+    height="1.65"
+    color="#7A7B5E"
+    material="src: #textura-alfombra; roughness: 1; repeat: 1 1; metalness: 0">
+</a-plane>
+
+<!-- Estantes a la derecha de la ventana -->
+<a-entity id="estantes">
+    <!-- Estante superior -->
+    <a-box
+        position="1.06 2.18 -5.50"
+        width="1.12"
+        height="0.055"
+        depth="0.36"
+        color="#34485C">
+    </a-box>
+
+    <!-- Estante inferior -->
+    <a-box
+        position="1.08 1.75 -5.50"
+        width="0.84"
+        height="0.055"
+        depth="0.34"
+        color="#34485C">
+    </a-box>
+
+    <!-- Planta importada -->
+    <a-gltf-model
+        id="planta-estante"
+        src="#modelo-planta"
+        position="0.75 2.210 -5.47"
+        rotation="0 20 0"
+        scale="0.80 0.80 0.80">
+    </a-gltf-model>
+    <a-box id="tocar-planta" class="interactivo" recuerdo-planta-caduco
+           position="0.80 2.36 -5.47" width="0.35" height="0.32" depth="0.30"
+           material="color: #FFFFFF; transparent: true; opacity: 0; depthWrite: false; side: double">
+    </a-box>
+
+    <!-- Portarretrato -->
+    <a-entity id="portarretrato" position="0.84 1.885 -5.458" rotation="0 -8 0">
+        <a-box width="0.18" height="0.205" depth="0.03" color="#2B313A"></a-box>
+        <a-box width="0.152" height="0.176" depth="0.012" position="0 0 0.011" color="#DBD8D0"></a-box>
+        <a-image id="foto-portarretrato-imagen" class="interactivo" examinar-caduco="tipo: foto" src="#foto-portarretrato"
+                 position="0 -0.010 0.018" width="0.124" height="0.124"
+                 material="shader: flat"></a-image>
+        <a-box position="0 -0.097 0.006" width="0.148" height="0.018" depth="0.018" color="#4B3628"></a-box>
+        <a-box position="0 -0.101 -0.010" width="0.16" height="0.010" depth="0.085"
+               color="#2F3642"></a-box>
+        <a-box position="0 -0.050 -0.050" rotation="-20 0 0"
+               width="0.020" height="0.100" depth="0.014" color="#28303A"></a-box>
+    </a-entity>
+</a-entity>
+
+<!-- Lámparas colgantes del dormitorio -->
+<a-entity id="foco-colgante-izquierdo" position="-0.32 2.70 -3.50">
+    <!-- Roseta fijada contra el techo. -->
+    <a-cylinder position="0 -0.040 0" radius="0.090" height="0.080"
+                color="#303B4A" material="metalness: 0.15; roughness: 0.85"></a-cylinder>
+    <a-cylinder position="0 -0.078 0" radius="0.110" height="0.012"
+                color="#4C5867" material="metalness: 0.12; roughness: 0.85"></a-cylinder>
+    <!-- Cable y unión con la pantalla. -->
+    <a-cylinder position="0 -0.255 0" radius="0.0045" height="0.345" color="#252D38"></a-cylinder>
+    <a-cylinder position="0 -0.445 0" radius="0.031" height="0.060" color="#4B5560"></a-cylinder>
+    <a-cylinder position="0 -0.478 0" radius="0.040" height="0.018" color="#887969"></a-cylinder>
+    <!-- Pantalla de metal, con el interior abierto hacia abajo. -->
+    <a-cone position="0 -0.525 0" radius-top="0.048" radius-bottom="0.172"
+            height="0.135" open-ended="true"
+            color="#39495A" material="side: double; metalness: 0.12; roughness: 0.9"></a-cone>
+    <a-cylinder position="0 -0.594 0" radius="0.172" height="0.010"
+                open-ended="true" color="#728092"></a-cylinder>
+    <!-- Lámpara y foco de luz real, controlados por el interruptor. -->
+    <a-sphere id="bombilla-izquierda" position="0 -0.507 0" radius="0.055"
+              scale="0.78 1.02 0.78" color="#FFF4D7"
+              material="metalness: 0; roughness: 0.45; emissive: #FFF1B9"></a-sphere>
+    <a-light id="luz-foco-izquierdo" type="point" color="#F7E6C2" intensity="1.35"
+             distance="4.1" decay="1" position="0 -0.635 0"></a-light>
+</a-entity>
+
+<a-entity id="foco-colgante-derecho" position="0.52 2.70 -3.50">
+    <!-- La segunda roseta mantiene el mismo acabado; cuelga ligeramente más abajo. -->
+    <a-cylinder position="0 -0.040 0" radius="0.090" height="0.080"
+                color="#303B4A" material="metalness: 0.15; roughness: 0.85"></a-cylinder>
+    <a-cylinder position="0 -0.078 0" radius="0.110" height="0.012"
+                color="#4C5867" material="metalness: 0.12; roughness: 0.85"></a-cylinder>
+    <a-cylinder position="0 -0.295 0" radius="0.0045" height="0.425" color="#252D38"></a-cylinder>
+    <a-cylinder position="0 -0.525 0" radius="0.031" height="0.060" color="#4B5560"></a-cylinder>
+    <a-cylinder position="0 -0.558 0" radius="0.040" height="0.018" color="#887969"></a-cylinder>
+    <a-cone position="0 -0.605 0" radius-top="0.048" radius-bottom="0.172"
+            height="0.135" open-ended="true"
+            color="#39495A" material="side: double; metalness: 0.12; roughness: 0.9"></a-cone>
+    <a-cylinder position="0 -0.674 0" radius="0.172" height="0.010"
+                open-ended="true" color="#728092"></a-cylinder>
+    <a-sphere id="bombilla-derecha" position="0 -0.587 0" radius="0.055"
+              scale="0.78 1.02 0.78" color="#FFF4D7"
+              material="metalness: 0; roughness: 0.45; emissive: #FFF1B9"></a-sphere>
+    <a-light id="luz-foco-derecho" type="point" color="#F7E6C2" intensity="1.08"
+             distance="4.1" decay="1" position="0 -0.715 0"></a-light>
+</a-entity>
+
+<!-- Pósteres -->
+<a-entity id="posteres-pared-izquierda">
+    <a-plane position="-1.892 1.50 -3.10" rotation="0 90 0"
+             width="0.765" height="1.14" color="#262A31" material="shader: standard; roughness: 1; metalness: 0"></a-plane>
+    <a-plane id="poster-jurassic-imagen" class="interactivo" examinar-caduco="tipo: jurassic"
+             position="-1.888 1.50 -3.10" rotation="0 90 0"
+             width="0.75" height="1.125"
+             material="src: #poster-jurassic-texturizado; shader: standard; side: double; roughness: 1; metalness: 0; transparent: false; opacity: 0.98; color: #E8E6E0"></a-plane>
+
+    <a-plane position="-1.892 1.70 -4.16" rotation="0 90 0"
+             width="0.765" height="1.14" color="#262A31" material="shader: standard; roughness: 1; metalness: 0"></a-plane>
+    <a-plane id="poster-leon-imagen" class="interactivo" examinar-caduco="tipo: leon"
+             position="-1.888 1.70 -4.16" rotation="0 90 0"
+             width="0.75" height="1.125"
+             material="src: #poster-leon-texturizado; shader: standard; side: double; roughness: 1; metalness: 0; transparent: false; opacity: 0.98; color: #E8E6E0"></a-plane>
+</a-entity>
+
+<a-entity id="sector-puerta-derecha" ciclo-puerta-terror>
+    <a-box id="pared-derecha-fondo"
+           position="1.95 1.35 -5.04" width="0.10" height="2.70" depth="1.32"
+           color="#858A96"></a-box>
+    <a-box id="pared-derecha-frente"
+           position="1.95 1.35 -2.17" width="0.10" height="2.70" depth="2.04"
+           color="#858A96"></a-box>
+    <a-box id="pared-derecha-dintel"
+           position="1.95 2.46 -3.78" width="0.10" height="0.48" depth="1.22"
+           color="#858A96"></a-box>
+    <a-entity id="interruptor-luz" interruptor-luz-caduco position="1.89 1.28 -4.95">
+        <a-box width="0.02" height="0.15" depth="0.10" color="#D8DCE3"></a-box>
+        <a-box id="tecla-interruptor" class="interactivo" position="-0.012 0 0" width="0.012" height="0.07" depth="0.045"
+               color="#F7F8FA" material="shader: standard; roughness: 0.9; metalness: 0"></a-box>
+        <a-box id="area-interruptor" class="interactivo" position="-0.028 0 0"
+               width="0.012" height="0.18" depth="0.14"
+               material="color: #FFFFFF; transparent: true; opacity: 0; depthWrite: false"></a-box>
+    </a-entity>
+
+    <a-box id="interior-oscuro-puerta"
+           position="3.06 1.10 -3.78" width="0.025" height="2.20" depth="1.15"
+           color="#121926" material="roughness: 1"></a-box>
+    <a-box position="2.51 1.10 -4.355" width="1.12" height="2.20" depth="0.025"
+           color="#1B2330"></a-box>
+    <a-box position="2.51 1.10 -3.205" width="1.12" height="2.20" depth="0.025"
+           color="#1B2330"></a-box>
+    <a-box position="2.51 2.21 -3.78" width="1.12" height="0.025" depth="1.175"
+           color="#17202C"></a-box>
+    <a-box position="2.51 -0.010 -3.78" width="1.12" height="0.02" depth="1.175"
+           color="#131A24"></a-box>
+
+    <a-plane id="pantalla-sombras-puerta"
+             position="3.034 1.14 -3.78" rotation="0 -90 0"
+             width="0.90" height="1.75" visible="false"
+             material="shader: flat; color: #FFFFFF; side: double; transparent: true; opacity: 0.70; depthWrite: false">
+    </a-plane>
+
+    <!-- Marco oscuro en tres piezas, con un umbral inferior. -->
+    <a-box position="1.87 1.12 -4.355" width="0.05" height="2.24" depth="0.065" color="#2F4052"></a-box>
+    <a-box position="1.87 1.12 -3.205" width="0.05" height="2.24" depth="0.065" color="#2F4052"></a-box>
+    <a-box position="1.87 2.23 -3.78" width="0.05" height="0.065" depth="1.21" color="#2F4052"></a-box>
+    <a-box position="1.90 0.015 -3.78" width="0.12" height="0.03" depth="1.18" color="#34485C"></a-box>
+
+    <a-entity id="puerta-pivote" position="1.853 0.035 -3.255"
+              animation__abrir="property: rotation; from: 0 0 0; to: 0 -7 0; dur: 1800; easing: easeInOutSine; startEvents: puerta-abrir; autoplay: false"
+              animation__cerrar="property: rotation; from: 0 -7 0; to: 0 0 0; dur: 720; easing: easeInOutSine; startEvents: puerta-cerrar; autoplay: false">
+
+        <a-box id="puerta-hoja" class="interactivo"
+               position="0 1.080 -0.5225" width="0.052" height="2.13" depth="1.045"
+               color="#24374C" material="roughness: 0.88"></a-box>
+
+        <!-- Relieves sobre la cara que mira hacia la habitación. -->
+        <a-box position="-0.029 1.51 -0.525" width="0.008" height="0.96" depth="0.88" color="#3D536B"></a-box>
+        <a-box position="-0.035 1.51 -0.525" width="0.007" height="0.89" depth="0.80" color="#2B4056"></a-box>
+        <a-box position="-0.029 0.49 -0.525" width="0.008" height="0.66" depth="0.88" color="#3D536B"></a-box>
+        <a-box position="-0.035 0.49 -0.525" width="0.007" height="0.59" depth="0.80" color="#2B4056"></a-box>
+
+        <a-cylinder position="-0.038 1.035 -0.893" radius="0.050" height="0.012"
+                    rotation="0 0 90" color="#8E784F"></a-cylinder>
+        <a-cylinder position="-0.053 1.035 -0.893" radius="0.019" height="0.027"
+                    rotation="0 0 90" color="#BDA576"></a-cylinder>
+        <a-box position="-0.079 1.035 -0.818" width="0.028" height="0.023" depth="0.150"
+               color="#BDA576"></a-box>
+        <a-cylinder position="-0.044 0.932 -0.893" radius="0.009" height="0.013"
+                    rotation="0 0 90" color="#151D29"></a-cylinder>
+
+        <a-cylinder position="0.038 1.035 -0.893" radius="0.050" height="0.012"
+                    rotation="0 0 90" color="#8E784F"></a-cylinder>
+        <a-cylinder position="0.053 1.035 -0.893" radius="0.019" height="0.027"
+                    rotation="0 0 90" color="#BDA576"></a-cylinder>
+        <a-box position="0.079 1.035 -0.818" width="0.028" height="0.023" depth="0.150"
+               color="#BDA576"></a-box>
+    </a-entity>
+</a-entity>
+</a-scene>
+
+    <div id="visor-foto-overlay" aria-hidden="true">
+        <div id="visor-foto-panel">
+            <div id="visor-foto-cabecera">
+                <div id="visor-foto-titulo">Archivo encontrado</div>
+                <button id="visor-foto-cerrar" type="button">Cerrar</button>
+            </div>
+            <div id="visor-foto-marco">
+                <img id="visor-foto-imagen" src="assets/imagenes/foto_portarretrato.png" alt="Fotografía familiar">
+                <div id="visor-foto-documento"></div>
+            </div>
+            <div id="visor-foto-pie">Fotografía familiar hallada en el dormitorio.</div>
+        </div>
+    </div>
+    <div id="mensaje-caduco" role="status" aria-live="polite"></div>
+</body>
+</html>
