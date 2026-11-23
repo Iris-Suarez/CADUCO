@@ -214,36 +214,67 @@ AFRAME.registerComponent('hamaca-animada', {
 });
 
 AFRAME.registerComponent('cajon-caduco', {
-    schema: { documento: { type: 'boolean', default: false } },
+    schema: {
+        documento: { type: 'boolean', default: false }
+    },
+
     init: function () {
         var componente = this;
         var pos = this.el.getAttribute('position');
+
         this.x = pos.x;
         this.y = pos.y;
         this.z = pos.z;
+
         this.abierto = false;
         this.temporizador = null;
+
         this.alClic = function (event) {
             if (event.stopPropagation) event.stopPropagation();
             componente.alternar();
         };
+
         this.iniciarControl = function () {
             componente.frente = componente.el.querySelector('.interactivo');
             componente.nota = componente.el.querySelector('#nota-cajon');
-            if (componente.frente) componente.frente.addEventListener('click', componente.alClic);
+
+            if (componente.frente) {
+                componente.frente.addEventListener('click', componente.alClic);
+            }
+
+            if (componente.nota) {
+                componente.nota.setAttribute('visible', false);
+                componente.nota.classList.remove('interactivo');
+                componente.refrescarRaycaster();
+            }
         };
+
         this.escena = this.el.sceneEl;
+
         if (this.escena && !this.escena.hasLoaded) {
             this.escena.addEventListener('loaded', this.iniciarControl, { once: true });
         } else {
             this.iniciarControl();
         }
     },
+
+    refrescarRaycaster: function () {
+        if (this.escena && this.escena.components && this.escena.components.raycaster) {
+            this.escena.components.raycaster.refreshObjects();
+        }
+    },
+
     alternar: function () {
         this.abierto = !this.abierto;
-        if (this.temporizador !== null) window.clearTimeout(this.temporizador);
+
+        if (this.temporizador !== null) {
+            window.clearTimeout(this.temporizador);
+            this.temporizador = null;
+        }
+
         var actual = this.el.getAttribute('position');
         var destinoZ = this.z + (this.abierto ? 0.19 : 0);
+
         this.el.removeAttribute('animation__abrir_cajon');
         this.el.setAttribute('animation__abrir_cajon', {
             property: 'position',
@@ -252,22 +283,40 @@ AFRAME.registerComponent('cajon-caduco', {
             dur: 530,
             easing: 'easeInOutSine'
         });
+
         if (this.nota) {
-            if (!this.abierto) this.nota.setAttribute('visible', false);
-            else {
+            if (!this.abierto) {
+                this.nota.setAttribute('visible', false);
+                this.nota.classList.remove('interactivo');
+                this.refrescarRaycaster();
+            } else {
                 var nota = this.nota;
+                var componente = this;
+
                 this.temporizador = window.setTimeout(function () {
                     nota.setAttribute('visible', true);
-                }, 350);
+                    nota.classList.add('interactivo');
+                    componente.refrescarRaycaster();
+                }, 430);
             }
         }
+
         if (this.abierto && !this.data.documento && window.CADUCOUI) {
             window.CADUCOUI.mensaje('El cajón está vacío.');
         }
     },
+
     remove: function () {
-        if (this.temporizador !== null) window.clearTimeout(this.temporizador);
-        if (this.escena) this.escena.removeEventListener('loaded', this.iniciarControl);
-        if (this.frente) this.frente.removeEventListener('click', this.alClic);
+        if (this.temporizador !== null) {
+            window.clearTimeout(this.temporizador);
+        }
+
+        if (this.escena) {
+            this.escena.removeEventListener('loaded', this.iniciarControl);
+        }
+
+        if (this.frente) {
+            this.frente.removeEventListener('click', this.alClic);
+        }
     }
 });

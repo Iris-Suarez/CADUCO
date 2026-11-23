@@ -331,28 +331,119 @@
     color="#454D59">
 </a-box>
 <!-- Cajones interactivos -->
+<!-- Cajones interactivos -->
 <a-entity id="cajon-superior" position="-0.42 0.61 0.305" cajon-caduco="documento: true">
-    <a-box id="cajon-superior-frente" class="interactivo" position="0 0 0"
-           width="0.38" height="0.13" depth="0.02" color="#39485D"></a-box>
-    <a-cylinder position="0 0 0.025" radius="0.008" height="0.14"
-                rotation="0 0 90" color="#A0A8B3"></a-cylinder>
-    <a-box position="0 -0.050 -0.135" width="0.34" height="0.012" depth="0.25" color="#304051"></a-box>
-    <a-box position="-0.17 -0.005 -0.135" width="0.013" height="0.08" depth="0.25" color="#3F5165"></a-box>
-    <a-box position="0.17 -0.005 -0.135" width="0.013" height="0.08" depth="0.25" color="#3F5165"></a-box>
-    <a-plane id="nota-cajon" class="interactivo" examinar-caduco="tipo: nota"
-             position="0 0.012 -0.06" rotation="-70 0 0" width="0.22" height="0.17"
-             visible="false" material="color: #E8E0C9; roughness: 1; side: double"></a-plane>
+    <!-- frente -->
+    <a-box id="cajon-superior-frente" class="interactivo"
+           position="0 0 0"
+           width="0.38" height="0.13" depth="0.02"
+           color="#39485D"></a-box>
+
+    <!-- manija -->
+    <a-cylinder position="0 0 0.025"
+                radius="0.008" height="0.14"
+                rotation="0 0 90"
+                color="#A0A8B3"></a-cylinder>
+
+    <!-- base -->
+    <a-box position="0 -0.050 -0.135"
+           width="0.34" height="0.012" depth="0.25"
+           color="#304051"></a-box>
+
+    <!-- lateral izq -->
+    <a-box position="-0.17 -0.005 -0.135"
+           width="0.013" height="0.08" depth="0.25"
+           color="#3F5165"></a-box>
+
+    <!-- lateral der -->
+    <a-box position="0.17 -0.005 -0.135"
+           width="0.013" height="0.08" depth="0.25"
+           color="#3F5165"></a-box>
+
+    <!-- fondo -->
+    <a-box position="0 -0.005 -0.255"
+           width="0.34" height="0.08" depth="0.012"
+           color="#36475A"></a-box>
+
+    <!-- nota -->
+    <a-plane id="nota-cajon"
+             examinar-caduco="tipo: nota"
+             position="0 -0.012 -0.145"
+             rotation="-88 0 0"
+             width="0.20" height="0.14"
+             visible="false"
+             material="color: #E8E0C9; roughness: 1; side: double; opacity: 0.98">
+    </a-plane>
 </a-entity>
+
 <a-entity id="cajon-medio" position="-0.42 0.46 0.305" cajon-caduco="documento: false">
-    <a-box class="interactivo" position="0 0 0" width="0.38" height="0.13" depth="0.02" color="#39485D"></a-box>
-    <a-cylinder position="0 0 0.025" radius="0.008" height="0.14" rotation="0 0 90" color="#A0A8B3"></a-cylinder>
-    <a-box position="0 -0.050 -0.135" width="0.34" height="0.012" depth="0.25" color="#304051"></a-box>
+    <!-- frente -->
+    <a-box class="interactivo"
+           position="0 0 0"
+           width="0.38" height="0.13" depth="0.02"
+           color="#39485D"></a-box>
+
+    <!-- manija -->
+    <a-cylinder position="0 0 0.025"
+                radius="0.008" height="0.14"
+                rotation="0 0 90"
+                color="#A0A8B3"></a-cylinder>
+
+    <!-- base -->
+    <a-box position="0 -0.050 -0.135"
+           width="0.34" height="0.012" depth="0.25"
+           color="#304051"></a-box>
+
+    <!-- lateral izq -->
+    <a-box position="-0.17 -0.005 -0.135"
+           width="0.013" height="0.08" depth="0.25"
+           color="#3F5165"></a-box>
+
+    <!-- lateral der -->
+    <a-box position="0.17 -0.005 -0.135"
+           width="0.013" height="0.08" depth="0.25"
+           color="#3F5165"></a-box>
+
+    <!-- fondo -->
+    <a-box position="0 -0.005 -0.255"
+           width="0.34" height="0.08" depth="0.012"
+           color="#36475A"></a-box>
 </a-entity>
+
 <a-entity id="cajon-inferior" position="-0.42 0.225 0.305" cajon-caduco="documento: false">
-    <a-box class="interactivo" position="0 0 0" width="0.38" height="0.31" depth="0.02" color="#39485D"></a-box>
-    <a-cylinder position="0 0.10 0.025" radius="0.008" height="0.14" rotation="0 0 90" color="#A0A8B3"></a-cylinder>
-    <a-box position="0 -0.130 -0.135" width="0.34" height="0.012" depth="0.25" color="#304051"></a-box>
+    <!-- frente -->
+    <a-box class="interactivo"
+           position="0 0 0"
+           width="0.38" height="0.31" depth="0.02"
+           color="#39485D"></a-box>
+
+    <!-- manija -->
+    <a-cylinder position="0 0.10 0.025"
+                radius="0.008" height="0.14"
+                rotation="0 0 90"
+                color="#A0A8B3"></a-cylinder>
+
+    <!-- base -->
+    <a-box position="0 -0.130 -0.135"
+           width="0.34" height="0.012" depth="0.25"
+           color="#304051"></a-box>
+
+    <!-- lateral izq -->
+    <a-box position="-0.17 0 -0.135"
+           width="0.013" height="0.26" depth="0.25"
+           color="#3F5165"></a-box>
+
+    <!-- lateral der -->
+    <a-box position="0.17 0 -0.135"
+           width="0.013" height="0.26" depth="0.25"
+           color="#3F5165"></a-box>
+
+    <!-- fondo -->
+    <a-box position="0 0 -0.255"
+           width="0.34" height="0.26" depth="0.012"
+           color="#36475A"></a-box>
 </a-entity>
+
 <a-gltf-model
     id="lampara"
     src="#modelo-lampara"
